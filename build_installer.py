@@ -26,6 +26,7 @@ Prerequisites:
 
 from __future__ import annotations
 
+import hashlib
 import os
 import platform
 import shutil
@@ -173,12 +174,21 @@ def _generate_wix_file_entries(bundle_dir: Path) -> tuple[str, str]:
     comp_lines: list[str] = []
     ref_lines: list[str] = []
 
-    def _safe_id(s: str) -> str:
-        return s.replace(".", "_").replace("-", "_").replace("\\", "_").replace("/", "_")
+    def _safe_id(prefix: str, s: str) -> str:
+        """Generate a WiX-safe identifier, hashing if longer than 68 chars."""
+        raw = s.replace(".", "_").replace("-", "_").replace("\\", "_").replace("/", "_")
+        candidate = f"{prefix}_{raw}"
+        if len(candidate) <= 68:
+            return candidate
+        # Hash to keep it short but unique
+        h = hashlib.md5(s.encode()).hexdigest()[:16]
+        # Keep a readable prefix from the filename
+        short = raw[-30:] if len(raw) > 30 else raw
+        return f"{prefix}_{short}_{h}"
 
     # Root-level files
     for f in dirs.get("", []):
-        cid = f"C_{_safe_id(f.name)}"
+        cid = _safe_id("C", f.name)
         src = str(bundle_dir / f).replace("/", "\\")
         comp_lines.append(
             f'      <Component Id="{cid}" Guid="{uuid.uuid4()}">\n'
@@ -196,7 +206,7 @@ def _generate_wix_file_entries(bundle_dir: Path) -> tuple[str, str]:
         opens = []
         closes = []
         for i, part in enumerate(parts):
-            sub_id = f"D_{_safe_id('_'.join(parts[: i + 1]))}"
+            sub_id = _safe_id("D", "_".join(parts[: i + 1]))
             pad = indent + "  " * i
             opens.append(f'{pad}<Directory Id="{sub_id}" Name="{part}">')
             closes.insert(0, f"{pad}</Directory>")
@@ -204,7 +214,7 @@ def _generate_wix_file_entries(bundle_dir: Path) -> tuple[str, str]:
         comp_lines.append("\n".join(opens))
         deep = indent + "  " * len(parts)
         for f in d_files:
-            cid = f"C_{_safe_id(str(f))}"
+            cid = _safe_id("C", str(f))
             src = str(bundle_dir / f).replace("/", "\\")
             comp_lines.append(
                 f'{deep}<Component Id="{cid}" Guid="{uuid.uuid4()}">\n'
@@ -375,20 +385,22 @@ def _build_fpm(bundle_dir: Path, pkg_type: str) -> None:
         "--maintainer", "Gilles Colling",
         "--url", "https://github.com/gcol33/scanlite",
         "--package", str(pkg_path),
-        f"{bundle_dir}/=/opt/scanlite/",
     ]
 
-    if desktop_src.exists():
-        cmd.append(f"{desktop_src}=/usr/share/applications/scanlite.desktop")
-    if icon_src.exists():
-        cmd.append(f"{icon_src}=/usr/share/icons/hicolor/256x256/apps/scanlite.png")
-
+    # Dependencies must come before path arguments (fpm treats trailing args as paths)
     if pkg_type == "deb":
         for dep in ("libgl1", "libglib2.0-0", "python3-tk", "tesseract-ocr"):
             cmd.extend(["-d", dep])
     elif pkg_type == "rpm":
         for dep in ("mesa-libGL", "glib2", "python3-tkinter", "tesseract"):
             cmd.extend(["-d", dep])
+
+    # Path mappings go last
+    cmd.append(f"{bundle_dir}/=/opt/scanlite/")
+    if desktop_src.exists():
+        cmd.append(f"{desktop_src}=/usr/share/applications/scanlite.desktop")
+    if icon_src.exists():
+        cmd.append(f"{icon_src}=/usr/share/icons/hicolor/256x256/apps/scanlite.png")
 
     print(f"Building .{pkg_type} ...")
     run(cmd)
