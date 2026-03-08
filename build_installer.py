@@ -175,8 +175,11 @@ def _generate_wix_file_entries(bundle_dir: Path) -> tuple[str, str]:
     ref_lines: list[str] = []
 
     def _safe_id(prefix: str, s: str) -> str:
-        """Generate a WiX-safe identifier, hashing if longer than 68 chars."""
-        raw = s.replace(".", "_").replace("-", "_").replace("\\", "_").replace("/", "_")
+        """Generate a WiX-safe identifier, hashing if longer than 68 chars.
+
+        WiX identifiers may only contain A-Z, a-z, 0-9, underscore, and period.
+        """
+        raw = "".join(c if c.isalnum() or c in "_." else "_" for c in s)
         candidate = f"{prefix}_{raw}"
         if len(candidate) <= 68:
             return candidate
