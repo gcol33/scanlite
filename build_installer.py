@@ -168,14 +168,18 @@ def _generate_wix_file_entries(bundle_dir: Path) -> tuple[str, str]:
     )
 
     def _safe_id(prefix: str, s: str) -> str:
-        """Generate a WiX-safe identifier, hashing if longer than 68 chars."""
+        """Generate a unique WiX-safe identifier.
+
+        Always appends a hash to prevent collisions when different characters
+        (e.g. '-' vs '+') are sanitized to the same replacement ('_').
+        """
+        h = hashlib.md5(s.encode()).hexdigest()[:10]
         raw = "".join(c if c.isalnum() or c in "_." else "_" for c in s)
-        candidate = f"{prefix}_{raw}"
-        if len(candidate) <= 68:
-            return candidate
-        h = hashlib.md5(s.encode()).hexdigest()[:16]
-        short = raw[-30:] if len(raw) > 30 else raw
-        return f"{prefix}_{short}_{h}"
+        # Budget: 72 char WiX limit minus prefix(1) minus underscores(2) minus hash(10) = 59
+        max_raw = 59 - len(prefix)
+        if len(raw) > max_raw:
+            raw = raw[-max_raw:]
+        return f"{prefix}_{raw}_{h}"
 
     # Build a tree: each node has children (subdirs) and files
     tree: dict = {}  # nested dicts; leaves under "_files_" key
