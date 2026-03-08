@@ -48,35 +48,54 @@ def _load_pdf(path: Path, dpi: int = 200) -> list[NDArray]:
     return pages
 
 
+def _downscale(img: NDArray, target_dpi: int, source_dpi: int = 200) -> NDArray:
+    """Downscale an image to a target DPI, assuming source_dpi as the original resolution."""
+    if target_dpi >= source_dpi:
+        return img
+    scale = target_dpi / source_dpi
+    h, w = img.shape[:2]
+    new_w = max(1, int(w * scale))
+    new_h = max(1, int(h * scale))
+    return cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+
 def export_pdf(
     pages: list[NDArray],
     output_path: str | Path,
     ocr: bool = False,
     dpi: int = 200,
+    jpeg_quality: int = 85,
 ) -> None:
     """Combine page images into a single PDF.
 
-    If ocr=True, runs Tesseract on each page to produce a searchable text layer.
+    Args:
+        dpi: Output resolution. Images are downscaled if this is lower than
+             their native resolution (assumed 200 DPI from PDF import).
+             Lower values produce smaller files.
+        jpeg_quality: JPEG compression quality (1-100). Lower = smaller file.
+        ocr: If True, runs Tesseract to produce a searchable text layer.
     """
     if ocr:
-        _export_ocr_pdf(pages, output_path, dpi)
+        _export_ocr_pdf(pages, output_path, dpi, jpeg_quality)
     else:
-        _export_image_pdf(pages, output_path, dpi)
+        _export_image_pdf(pages, output_path, dpi, jpeg_quality)
 
 
-def _export_image_pdf(pages: list[NDArray], output_path: str | Path, dpi: int) -> None:
+def _export_image_pdf(
+    pages: list[NDArray], output_path: str | Path, dpi: int, jpeg_quality: int
+) -> None:
     """Create a PDF from images using PyMuPDF (no OCR)."""
     doc = fitz.open()
     for img_bgr in pages:
-        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+        scaled = _downscale(img_bgr, dpi)
+        img_rgb = cv2.cvtColor(scaled, cv2.COLOR_BGR2RGB)
         pil_img = Image.fromarray(img_rgb)
 
         buf = io.BytesIO()
-        pil_img.save(buf, format="JPEG", quality=90)
+        pil_img.save(buf, format="JPEG", quality=jpeg_quality)
         buf.seek(0)
 
-        h, w = img_bgr.shape[:2]
-        # Page size in points (72 dpi)
+        h, w = scaled.shape[:2]
         page_w = w * 72.0 / dpi
         page_h = h * 72.0 / dpi
         page = doc.new_page(width=page_w, height=page_h)
@@ -86,7 +105,9 @@ def _export_image_pdf(pages: list[NDArray], output_path: str | Path, dpi: int) -
     doc.close()
 
 
-def _export_ocr_pdf(pages: list[NDArray], output_path: str | Path, dpi: int) -> None:
+def _export_ocr_pdf(
+    pages: list[NDArray], output_path: str | Path, dpi: int, jpeg_quality: int
+) -> None:
     """Create a searchable PDF using Tesseract's PDF output, then merge pages."""
     try:
         import pytesseract
@@ -96,10 +117,10 @@ def _export_ocr_pdf(pages: list[NDArray], output_path: str | Path, dpi: int) -> 
     merged = fitz.open()
 
     for img_bgr in pages:
-        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+        scaled = _downscale(img_bgr, dpi)
+        img_rgb = cv2.cvtColor(scaled, cv2.COLOR_BGR2RGB)
         pil_img = Image.fromarray(img_rgb)
 
-        # Tesseract produces a single-page searchable PDF
         pdf_bytes = pytesseract.image_to_pdf_or_hocr(pil_img, extension="pdf")
 
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:

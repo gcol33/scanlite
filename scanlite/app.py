@@ -89,6 +89,23 @@ class App:
         )
 
         ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=6)
+
+        ttk.Label(toolbar, text="DPI:").pack(side=tk.LEFT, padx=(2, 0))
+        self._export_dpi = tk.IntVar(value=150)
+        dpi_spin = ttk.Spinbox(
+            toolbar, from_=72, to=600, increment=10, width=5,
+            textvariable=self._export_dpi,
+        )
+        dpi_spin.pack(side=tk.LEFT, padx=2)
+
+        ttk.Label(toolbar, text="Quality:").pack(side=tk.LEFT, padx=(4, 0))
+        self._export_quality = tk.IntVar(value=85)
+        qual_spin = ttk.Spinbox(
+            toolbar, from_=10, to=100, increment=5, width=4,
+            textvariable=self._export_quality,
+        )
+        qual_spin.pack(side=tk.LEFT, padx=2)
+
         ttk.Button(toolbar, text="Export PDF", command=self._export).pack(side=tk.LEFT, padx=2)
         ttk.Button(toolbar, text="Export PDF + OCR", command=self._export_ocr).pack(
             side=tk.LEFT, padx=2
@@ -444,14 +461,16 @@ class App:
         if not path:
             return
 
+        dpi = self._export_dpi.get()
+        quality = self._export_quality.get()
         label = "Exporting with OCR" if ocr else "Exporting"
-        self.status_var.set(f"{label}...")
+        self.status_var.set(f"{label} ({dpi} DPI, quality {quality})...")
         self.root.update_idletasks()
 
         def worker() -> None:
             try:
                 imgs = [p.processed for p in self.pages]
-                export_pdf(imgs, path, ocr=ocr)
+                export_pdf(imgs, path, ocr=ocr, dpi=dpi, jpeg_quality=quality)
                 self.root.after(0, lambda: self.status_var.set(f"Saved: {path}"))
             except Exception as exc:
                 self.root.after(
