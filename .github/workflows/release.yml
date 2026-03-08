@@ -133,6 +133,7 @@ jobs:
 
   # ── Create GitHub release with all artifacts ──────────────────────────
   release:
+    if: ${{ !cancelled() }}
     needs: [windows, macos, linux, pypi, publish-pypi]
     runs-on: ubuntu-latest
     steps:

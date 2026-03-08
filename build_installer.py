@@ -158,74 +158,60 @@ def _find_wix() -> str | None:
 def _generate_wix_file_entries(bundle_dir: Path) -> tuple[str, str]:
     """Walk the bundle dir and produce WiX v4 XML fragments.
 
+    Builds a directory tree first so each <Directory> is emitted exactly once,
+    avoiding duplicate ID errors in WiX.
+
     Returns (components_xml, component_refs_xml).
     """
     files: list[Path] = sorted(
         f.relative_to(bundle_dir) for f in bundle_dir.rglob("*") if f.is_file()
     )
 
-    dirs: dict[str, list[Path]] = {}
-    for f in files:
-        d = str(f.parent).replace("/", "\\")
-        if d == ".":
-            d = ""
-        dirs.setdefault(d, []).append(f)
-
-    comp_lines: list[str] = []
-    ref_lines: list[str] = []
-
     def _safe_id(prefix: str, s: str) -> str:
-        """Generate a WiX-safe identifier, hashing if longer than 68 chars.
-
-        WiX identifiers may only contain A-Z, a-z, 0-9, underscore, and period.
-        """
+        """Generate a WiX-safe identifier, hashing if longer than 68 chars."""
         raw = "".join(c if c.isalnum() or c in "_." else "_" for c in s)
         candidate = f"{prefix}_{raw}"
         if len(candidate) <= 68:
             return candidate
-        # Hash to keep it short but unique
         h = hashlib.md5(s.encode()).hexdigest()[:16]
-        # Keep a readable prefix from the filename
         short = raw[-30:] if len(raw) > 30 else raw
         return f"{prefix}_{short}_{h}"
 
-    # Root-level files
-    for f in dirs.get("", []):
-        cid = _safe_id("C", f.name)
-        src = str(bundle_dir / f).replace("/", "\\")
-        comp_lines.append(
-            f'      <Component Id="{cid}" Guid="{uuid.uuid4()}">\n'
-            f'        <File Source="{src}" />\n'
-            f'      </Component>'
-        )
-        ref_lines.append(f'        <ComponentRef Id="{cid}" />')
+    # Build a tree: each node has children (subdirs) and files
+    tree: dict = {}  # nested dicts; leaves under "_files_" key
+    for f in files:
+        parts = list(f.parent.parts) if str(f.parent) != "." else []
+        node = tree
+        for part in parts:
+            node = node.setdefault(part, {})
+        node.setdefault("_files_", []).append(f)
 
-    # Subdirectory files
-    for d, d_files in sorted(dirs.items()):
-        if d == "":
-            continue
-        parts = d.split("\\")
-        indent = "      "
-        opens = []
-        closes = []
-        for i, part in enumerate(parts):
-            sub_id = _safe_id("D", "_".join(parts[: i + 1]))
-            pad = indent + "  " * i
-            opens.append(f'{pad}<Directory Id="{sub_id}" Name="{part}">')
-            closes.insert(0, f"{pad}</Directory>")
+    comp_lines: list[str] = []
+    ref_lines: list[str] = []
 
-        comp_lines.append("\n".join(opens))
-        deep = indent + "  " * len(parts)
-        for f in d_files:
+    def _walk(node: dict, path_parts: list[str], depth: int) -> None:
+        indent = "      " + "  " * depth
+
+        # Emit files at this level
+        for f in node.get("_files_", []):
             cid = _safe_id("C", str(f))
             src = str(bundle_dir / f).replace("/", "\\")
             comp_lines.append(
-                f'{deep}<Component Id="{cid}" Guid="{uuid.uuid4()}">\n'
-                f'{deep}  <File Source="{src}" />\n'
-                f'{deep}</Component>'
+                f'{indent}<Component Id="{cid}" Guid="{uuid.uuid4()}">\n'
+                f'{indent}  <File Source="{src}" />\n'
+                f'{indent}</Component>'
             )
             ref_lines.append(f'        <ComponentRef Id="{cid}" />')
-        comp_lines.append("\n".join(closes))
+
+        # Recurse into subdirectories (each emitted exactly once)
+        for child_name in sorted(k for k in node if k != "_files_"):
+            child_path = path_parts + [child_name]
+            dir_id = _safe_id("D", "_".join(child_path))
+            comp_lines.append(f'{indent}<Directory Id="{dir_id}" Name="{child_name}">')
+            _walk(node[child_name], child_path, depth + 1)
+            comp_lines.append(f'{indent}</Directory>')
+
+    _walk(tree, [], 0)
 
     return "\n".join(comp_lines), "\n".join(ref_lines)
 
