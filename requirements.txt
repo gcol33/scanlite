@@ -1,0 +1,6 @@
+opencv-python>=4.8
+Pillow>=10.0
+PyMuPDF>=1.23
+pytesseract>=0.3.10
+numpy>=1.24
+sv_ttk>=2.6

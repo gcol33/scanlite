@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Scanlite
+Comment=Document scanner: crop, perspective-correct, enhance, OCR
+Exec=/opt/scanlite/scanlite
+Icon=scanlite
+Type=Application
+Categories=Graphics;Scanning;Office;
+Terminal=false
+StartupNotify=true
+MimeType=application/pdf;image/png;image/jpeg;image/tiff;

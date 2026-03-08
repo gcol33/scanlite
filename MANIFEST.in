@@ -1,0 +1,4 @@
+include LICENSE
+include LICENSE.md
+include README.md
+recursive-include scanlite *.py

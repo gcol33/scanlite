@@ -1,0 +1,143 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+
+  # ── Windows x64 .msi ──────────────────────────────────────────────────
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[build]"
+
+      - name: Install WiX v4
+        run: dotnet tool install -g wix
+
+      - name: Build .msi
+        run: python build_installer.py --msi
+
+      - name: Upload .msi
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-msi
+          path: Output/*.msi
+
+  # ── macOS ARM64 .dmg ──────────────────────────────────────────────────
+  macos:
+    runs-on: macos-14  # Apple Silicon (M1+)
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[build]"
+          brew install create-dmg
+
+      - name: Build .dmg
+        run: python build_installer.py --dmg
+
+      - name: Upload .dmg
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: Output/*.dmg
+
+  # ── Linux x64 .deb + .rpm ─────────────────────────────────────────────
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[build]"
+          sudo apt-get update
+          sudo apt-get install -y ruby-dev build-essential rpm
+          sudo gem install fpm
+
+      - name: Build .deb and .rpm
+        run: |
+          python build_installer.py --deb
+          python build_installer.py --rpm
+
+      - name: Upload .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: Output/*.deb
+
+      - name: Upload .rpm
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-rpm
+          path: Output/*.rpm
+
+  # ── PyPI sdist + wheel ────────────────────────────────────────────────
+  pypi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build sdist and wheel
+        run: |
+          pip install build
+          python -m build
+
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: pypi-dist
+          path: dist/*
+
+  # ── Create GitHub release with all artifacts ──────────────────────────
+  release:
+    needs: [windows, macos, linux, pypi]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Flatten artifacts into one directory
+        run: |
+          mkdir -p release_assets
+          find artifacts -type f -exec cp {} release_assets/ \;
+          ls -lh release_assets/
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "Scanlite ${{ github.ref_name }}" \
+            --generate-notes \
+            release_assets/*

@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scanlite"
+version = "0.1.0"
+description = "Cross-platform document scanner: crop, perspective-correct, enhance, OCR, and combine into PDF."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: X11 Applications",
+    "Environment :: Win32 (MS Windows)",
+    "Environment :: MacOS X",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Graphics :: Capture :: Scanners",
+]
+dependencies = [
+    "opencv-python>=4.8",
+    "Pillow>=10.0",
+    "PyMuPDF>=1.23",
+    "pytesseract>=0.3.10",
+    "numpy>=1.24",
+    "sv_ttk>=2.6",
+]
+
+[project.optional-dependencies]
+build = ["pyinstaller>=6.0"]
+
+[project.scripts]
+scanlite = "scanlite.__main__:main"
+
+[project.gui-scripts]
+scanlite-gui = "scanlite.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/gcol33/scanlite"
+Repository = "https://github.com/gcol33/scanlite"
+Issues = "https://github.com/gcol33/scanlite/issues"
+
+[tool.setuptools.packages.find]
+include = ["scanlite*"]
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "W", "I"]
