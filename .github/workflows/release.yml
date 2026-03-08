@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write  # PyPI trusted publisher (OIDC)
 
 jobs:
 
@@ -115,9 +116,25 @@ jobs:
           name: pypi-dist
           path: dist/*
 
+  # ── Publish to PyPI ───────────────────────────────────────────────────
+  publish-pypi:
+    needs: [pypi]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: pypi-dist
+          path: dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
   # ── Create GitHub release with all artifacts ──────────────────────────
   release:
-    needs: [windows, macos, linux, pypi]
+    needs: [windows, macos, linux, pypi, publish-pypi]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
