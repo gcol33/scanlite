@@ -15,7 +15,12 @@ pip install scanlite
 scanlite
 ```
 
-Or grab a native installer from [Releases](https://github.com/gcol33/scanlite/releases): **.msi** (Windows) · **.dmg** (macOS Apple Silicon) · **.deb** / **.rpm** (Linux)
+Or grab a native installer from [Releases](https://github.com/gcol33/scanlite/releases):
+
+- [**Scanlite-0.1.0.msi**](https://github.com/gcol33/scanlite/releases/download/v0.1.0/Scanlite-0.1.0.msi) (Windows x64)
+- [**Scanlite-0.1.0.dmg**](https://github.com/gcol33/scanlite/releases/download/v0.1.0/Scanlite-0.1.0.dmg) (macOS Apple Silicon)
+- [**scanlite-0.1.0.deb**](https://github.com/gcol33/scanlite/releases/download/v0.1.0/scanlite-0.1.0.deb) (Debian/Ubuntu)
+- [**scanlite-0.1.0.rpm**](https://github.com/gcol33/scanlite/releases/download/v0.1.0/scanlite-0.1.0.rpm) (Fedora/RHEL)
 
 ## Features
 
