@@ -15,15 +15,6 @@ pip install scanlite
 scanlite
 ```
 
-Or grab a native installer from [Releases](https://github.com/gcol33/scanlite/releases):
-
-| Platform | Download |
-|----------|----------|
-| Windows x64 | [Scanlite-0.1.0.msi](https://github.com/gcol33/scanlite/releases/download/v0.1.0/Scanlite-0.1.0.msi) |
-| macOS Apple Silicon | [Scanlite-0.1.0.dmg](https://github.com/gcol33/scanlite/releases/download/v0.1.0/Scanlite-0.1.0.dmg) |
-| Debian / Ubuntu | [scanlite-0.1.0.deb](https://github.com/gcol33/scanlite/releases/download/v0.1.0/scanlite-0.1.0.deb) |
-| Fedora / RHEL | [scanlite-0.1.0.rpm](https://github.com/gcol33/scanlite/releases/download/v0.1.0/scanlite-0.1.0.rpm) |
-
 ## Features
 
 ### Import
@@ -72,12 +63,12 @@ scanlite          # launch the GUI
 
 Download from [Releases](https://github.com/gcol33/scanlite/releases):
 
-| Platform | File | Install |
-|----------|------|---------|
-| Windows x64 | `Scanlite-x.y.z.msi` | Double-click; installs to Program Files with Start Menu shortcut |
-| macOS ARM64 | `Scanlite-x.y.z.dmg` | Open, drag to Applications |
-| Debian/Ubuntu | `scanlite-x.y.z.deb` | `sudo dpkg -i scanlite-x.y.z.deb` |
-| Fedora/RHEL | `scanlite-x.y.z.rpm` | `sudo rpm -i scanlite-x.y.z.rpm` |
+| Platform | Download | Install |
+|----------|----------|---------|
+| Windows x64 | [Scanlite-0.1.0.msi](https://github.com/gcol33/scanlite/releases/download/v0.1.0/Scanlite-0.1.0.msi) | Double-click; installs to Program Files with Start Menu shortcut |
+| macOS Apple Silicon | [Scanlite-0.1.0.dmg](https://github.com/gcol33/scanlite/releases/download/v0.1.0/Scanlite-0.1.0.dmg) | Open, drag to Applications |
+| Debian / Ubuntu | [scanlite-0.1.0.deb](https://github.com/gcol33/scanlite/releases/download/v0.1.0/scanlite-0.1.0.deb) | `sudo dpkg -i scanlite-0.1.0.deb` |
+| Fedora / RHEL | [scanlite-0.1.0.rpm](https://github.com/gcol33/scanlite/releases/download/v0.1.0/scanlite-0.1.0.rpm) | `sudo rpm -i scanlite-0.1.0.rpm` |
 
 ### OCR dependency
 
