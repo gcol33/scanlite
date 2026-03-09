@@ -19,30 +19,12 @@ Or download a native installer from [Releases](https://github.com/gcol33/scanlit
 
 | Platform | Download | Install |
 |----------|----------|---------|
-| Windows x64 | [Scanlite-0.1.0.msi](https://github.com/gcol33/scanlite/releases/download/v0.1.0/Scanlite-0.1.0.msi) | Double-click; installs to Program Files with Start Menu shortcut |
-| macOS Apple Silicon | [Scanlite-0.1.0.dmg](https://github.com/gcol33/scanlite/releases/download/v0.1.0/Scanlite-0.1.0.dmg) | Open, drag to Applications |
-| Debian / Ubuntu | [scanlite-0.1.0.deb](https://github.com/gcol33/scanlite/releases/download/v0.1.0/scanlite-0.1.0.deb) | `sudo dpkg -i scanlite-0.1.0.deb` |
-| Fedora / RHEL | [scanlite-0.1.0.rpm](https://github.com/gcol33/scanlite/releases/download/v0.1.0/scanlite-0.1.0.rpm) | `sudo rpm -i scanlite-0.1.0.rpm` |
+| Windows x64 | [Scanlite-0.1.1.msi](https://github.com/gcol33/scanlite/releases/download/v0.1.1/Scanlite-0.1.1.msi) | Double-click; installs to Program Files with Start Menu shortcut |
+| macOS Apple Silicon | [Scanlite-0.1.1.dmg](https://github.com/gcol33/scanlite/releases/download/v0.1.1/Scanlite-0.1.1.dmg) | Open, drag to Applications |
+| Debian / Ubuntu | [scanlite-0.1.1.deb](https://github.com/gcol33/scanlite/releases/download/v0.1.1/scanlite-0.1.1.deb) | `sudo dpkg -i scanlite-0.1.1.deb` |
+| Fedora / RHEL | [scanlite-0.1.1.rpm](https://github.com/gcol33/scanlite/releases/download/v0.1.1/scanlite-0.1.1.rpm) | `sudo rpm -i scanlite-0.1.1.rpm` |
 
-### OCR dependency
-
-OCR export requires [Tesseract](https://github.com/tesseract-ocr/tesseract) installed separately:
-
-```bash
-# Windows (winget)
-winget install UB-Mannheim.TesseractOCR
-
-# macOS
-brew install tesseract
-
-# Debian/Ubuntu
-sudo apt install tesseract-ocr
-
-# Fedora
-sudo dnf install tesseract
-```
-
-The app works fine without Tesseract; you just cannot use the "Export PDF + OCR" button.
+Native installers bundle [Tesseract](https://github.com/tesseract-ocr/tesseract) for OCR out of the box. When installing via pip, Tesseract must be available on your system PATH for the OCR export to work.
 
 ## Features
 
@@ -100,7 +82,7 @@ The scan enhancer auto-detects whether a page is mostly white (median brightness
 ## System Requirements
 
 - Python 3.10+
-- Tesseract OCR (optional, for searchable PDF export)
+- Tesseract OCR (bundled in native installers; for pip installs, [install separately](https://tesseract-ocr.github.io/tessdoc/Installation.html))
 
 ## Support
 

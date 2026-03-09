@@ -42,7 +42,7 @@ INSTALLER_DIR = ROOT / "installer"
 OUTPUT = ROOT / "Output"
 
 APP_NAME = "Scanlite"
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.1.1"
 BUNDLE_DIR = DIST / "scanlite"
 
 # Stable GUID for WiX (regenerate if you fork)
@@ -62,6 +62,100 @@ def which(name: str) -> str | None:
 
 def app_exe() -> str:
     return "scanlite.exe" if platform.system() == "Windows" else "scanlite"
+
+
+def _find_tesseract_dir() -> Path | None:
+    """Locate the Tesseract installation directory for vendoring.
+
+    Returns a directory containing the tesseract binary and tessdata/.
+    Only used when SCANLITE_VENDOR_TESSERACT=1.
+    """
+    if not os.environ.get("SCANLITE_VENDOR_TESSERACT"):
+        return None
+
+    system = platform.system()
+    tess = shutil.which("tesseract") or shutil.which("tesseract.exe")
+    if not tess:
+        print("WARNING: SCANLITE_VENDOR_TESSERACT set but tesseract not found on PATH")
+        return None
+
+    tess_path = Path(tess).resolve()
+    tess_dir = tess_path.parent
+
+    # On Windows (choco), tesseract.exe is in the install dir alongside tessdata/
+    # On macOS (brew), binary is in bin/ but tessdata is in share/tessdata
+    # On Linux (apt), binary is in /usr/bin, tessdata is in /usr/share/tesseract-ocr/5/tessdata
+    if system == "Windows":
+        if (tess_dir / "tessdata").is_dir():
+            return tess_dir
+    elif system == "Darwin":
+        # Homebrew: /opt/homebrew/bin/tesseract -> share at /opt/homebrew/share/tessdata
+        prefix = tess_dir.parent  # /opt/homebrew
+        tessdata = prefix / "share" / "tessdata"
+        if tessdata.is_dir():
+            return prefix
+    else:
+        # Linux: collect from multiple locations
+        pass
+
+    return tess_dir
+
+
+def _collect_tesseract_binaries(sep: str) -> list[str]:
+    """Return PyInstaller --add-binary args to vendor Tesseract.
+
+    Copies the tesseract binary and tessdata into a 'tesseract/' subdirectory
+    inside the bundle.
+    """
+    tess_dir = _find_tesseract_dir()
+    if tess_dir is None:
+        return []
+
+    system = platform.system()
+    args = []
+
+    tess = shutil.which("tesseract") or shutil.which("tesseract.exe")
+    if tess:
+        args.extend(["--add-binary", f"{tess}{sep}tesseract"])
+
+    if system == "Windows":
+        tessdata = tess_dir / "tessdata"
+        if tessdata.is_dir():
+            args.extend(["--add-data", f"{tessdata}{sep}tesseract/tessdata"])
+        # Also bundle any DLLs tesseract needs
+        for dll in tess_dir.glob("*.dll"):
+            args.extend(["--add-binary", f"{dll}{sep}tesseract"])
+    elif system == "Darwin":
+        prefix = tess_dir  # e.g. /opt/homebrew
+        tessdata = prefix / "share" / "tessdata"
+        if tessdata.is_dir():
+            args.extend(["--add-data", f"{tessdata}{sep}tesseract/tessdata"])
+        # Homebrew dylibs
+        lib_dir = prefix / "lib"
+        for dylib in lib_dir.glob("libtesseract*.dylib"):
+            args.extend(["--add-binary", f"{dylib}{sep}tesseract"])
+        for dylib in lib_dir.glob("liblept*.dylib"):
+            args.extend(["--add-binary", f"{dylib}{sep}tesseract"])
+    else:
+        # Linux: tessdata location varies
+        for candidate in [
+            Path("/usr/share/tesseract-ocr/5/tessdata"),
+            Path("/usr/share/tesseract-ocr/4.00/tessdata"),
+            Path("/usr/share/tessdata"),
+        ]:
+            if candidate.is_dir():
+                args.extend(["--add-data", f"{candidate}{sep}tesseract/tessdata"])
+                break
+        # Bundle libleptonica and libtesseract
+        for lib_pattern in ["libtesseract*.so*", "liblept*.so*"]:
+            for lib_dir in [Path("/usr/lib/x86_64-linux-gnu"), Path("/usr/lib64")]:
+                for lib in lib_dir.glob(lib_pattern):
+                    if lib.is_file() and not lib.is_symlink():
+                        args.extend(["--add-binary", f"{lib}{sep}tesseract"])
+
+    if args:
+        print(f"Vendoring Tesseract from {tess_dir}")
+    return args
 
 
 def clean() -> None:
@@ -102,8 +196,12 @@ def bundle() -> Path:
         "--hidden-import", "PIL._tkinter_finder",
         "--collect-all", "pytesseract",
         "--collect-all", "sv_ttk",
-        str(ROOT / "scanlite" / "__main__.py"),
     ]
+
+    # Vendor Tesseract binary + tessdata into the bundle
+    cmd.extend(_collect_tesseract_binaries(sep))
+
+    cmd.append(str(ROOT / "scanlite" / "__main__.py"))
 
     if system == "Windows":
         icon = INSTALLER_DIR / "scanlite.ico"

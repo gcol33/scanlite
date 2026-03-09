@@ -2,12 +2,8 @@
 
 from __future__ import annotations
 
-import platform
-import shutil
-import subprocess
 import threading
 import tkinter as tk
-import webbrowser
 from collections.abc import Callable
 from tkinter import filedialog, messagebox, ttk
 
@@ -113,13 +109,6 @@ class App:
         ttk.Button(toolbar, text="Export PDF + OCR", command=self._export_ocr).pack(
             side=tk.LEFT, padx=2
         )
-
-        # Show "Install Tesseract" if not found
-        if not shutil.which("tesseract"):
-            ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=6)
-            ttk.Button(
-                toolbar, text="Install Tesseract", command=self._install_tesseract
-            ).pack(side=tk.LEFT, padx=2)
 
         # Per-page controls
         page_bar = ttk.Frame(self.root, padding=4)
@@ -495,54 +484,6 @@ class App:
     def _export_ocr(self) -> None:
         self._do_export(ocr=True)
 
-    # ------------------------------------------------------------------
-    # Tesseract install helper
-    # ------------------------------------------------------------------
-
-    def _install_tesseract(self) -> None:
-        """Guide the user to install Tesseract for their platform."""
-        system = platform.system()
-        if system == "Windows":
-            # Try winget first; fall back to download page
-            try:
-                subprocess.Popen(
-                    ["winget", "install", "UB-Mannheim.TesseractOCR"],
-                    creationflags=subprocess.CREATE_NEW_CONSOLE,
-                )
-                self.status_var.set("Installing Tesseract via winget (check the new window)...")
-                return
-            except FileNotFoundError:
-                webbrowser.open(
-                    "https://github.com/UB-Mannheim/tesseract/wiki"
-                )
-                self.status_var.set("Opened Tesseract download page in browser.")
-        elif system == "Darwin":
-            for cmd, msg in [
-                (["brew", "install", "tesseract"], "Homebrew"),
-                (["port", "install", "tesseract"], "MacPorts"),
-                (["conda", "install", "-y", "-c", "conda-forge", "tesseract"], "conda"),
-            ]:
-                if shutil.which(cmd[0]):
-                    subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    self.status_var.set(f"Installing Tesseract via {msg}...")
-                    return
-            webbrowser.open(
-                "https://tesseract-ocr.github.io/tessdoc/Installation.html"
-            )
-            self.status_var.set("Opened Tesseract install guide in browser.")
-        else:
-            # Linux: try apt, then dnf, then browser
-            for cmd in (["sudo", "apt", "install", "-y", "tesseract-ocr"],
-                        ["sudo", "dnf", "install", "-y", "tesseract"]):
-                if shutil.which(cmd[1]):
-                    try:
-                        subprocess.Popen(cmd)
-                        self.status_var.set(f"Installing Tesseract via {cmd[1]}...")
-                        return
-                    except Exception:
-                        pass
-            webbrowser.open("https://github.com/tesseract-ocr/tesseract")
-            self.status_var.set("Opened Tesseract page in browser.")
 
 
 def _apply_theme(root: tk.Tk) -> None:

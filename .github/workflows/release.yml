@@ -25,11 +25,16 @@ jobs:
         run: |
           pip install -e ".[build]"
 
+      - name: Install Tesseract
+        run: choco install tesseract -y
+
       - name: Install WiX v4
         run: dotnet tool install -g wix
 
       - name: Build .msi
         run: python build_installer.py --msi
+        env:
+          SCANLITE_VENDOR_TESSERACT: "1"
 
       - name: Upload .msi
         uses: actions/upload-artifact@v4
@@ -50,10 +55,12 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e ".[build]"
-          brew install create-dmg
+          brew install create-dmg tesseract
 
       - name: Build .dmg
         run: python build_installer.py --dmg
+        env:
+          SCANLITE_VENDOR_TESSERACT: "1"
 
       - name: Upload .dmg
         uses: actions/upload-artifact@v4
@@ -75,13 +82,15 @@ jobs:
         run: |
           pip install -e ".[build]"
           sudo apt-get update
-          sudo apt-get install -y ruby-dev build-essential rpm
+          sudo apt-get install -y ruby-dev build-essential rpm tesseract-ocr tesseract-ocr-eng
           sudo gem install fpm
 
       - name: Build .deb and .rpm
         run: |
           python build_installer.py --deb
           python build_installer.py --rpm
+        env:
+          SCANLITE_VENDOR_TESSERACT: "1"
 
       - name: Upload .deb
         uses: actions/upload-artifact@v4
