@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import platform
 import threading
 import tkinter as tk
 from collections.abc import Callable
@@ -264,7 +265,7 @@ class App:
             self._show_preview()
 
     # ------------------------------------------------------------------
-    # Thumbnail panel
+    # Thumbnail panel with drag-and-drop reordering
     # ------------------------------------------------------------------
 
     def _on_thumb_configure(self, _event: tk.Event) -> None:
@@ -274,22 +275,123 @@ class App:
         for w in self.thumb_inner.winfo_children():
             w.destroy()
 
+        self._thumb_labels: list[tk.Label] = []
         for i, page in enumerate(self.pages):
+            frame = tk.Frame(self.thumb_inner, bg="#1c1c1c")
+            frame.pack(pady=2, padx=4, fill=tk.X)
+
             photo = page.make_thumbnail()
-            lbl = tk.Label(
-                self.thumb_inner,
+
+            # Page number label
+            num_lbl = tk.Label(
+                frame, text=str(i + 1), fg="#999999", bg="#1c1c1c",
+                font=("TkDefaultFont", 9),
+            )
+            num_lbl.pack(side=tk.TOP)
+
+            # Thumbnail image
+            img_lbl = tk.Label(
+                frame,
                 image=photo,
                 bg="#4a90d9" if i == self.selected else "#1c1c1c",
                 padx=4,
-                pady=4,
+                pady=2,
                 cursor="hand2",
+                bd=2,
+                relief=tk.SOLID if i == self.selected else tk.FLAT,
             )
-            lbl.image = photo  # prevent GC
-            lbl.pack(pady=2)
-            lbl.bind("<Button-1>", lambda e, idx=i: self._select(idx))
+            img_lbl.image = photo  # prevent GC
+            img_lbl.pack(side=tk.TOP)
+
+            # Click to select
+            for widget in (frame, num_lbl, img_lbl):
+                widget.bind("<Button-1>", lambda e, idx=i: self._thumb_click(e, idx))
+
+            # Drag-and-drop reordering
+            img_lbl.bind("<B1-Motion>", lambda e, idx=i: self._thumb_drag(e, idx))
+            img_lbl.bind("<ButtonRelease-1>", lambda e: self._thumb_drop(e))
+
+            self._thumb_labels.append(img_lbl)
 
         self.thumb_inner.update_idletasks()
         self.thumb_canvas.configure(scrollregion=self.thumb_canvas.bbox("all"))
+
+    def _thumb_click(self, event: tk.Event, idx: int) -> None:
+        """Select a thumbnail on click."""
+        self._drag_start_idx = idx
+        self._dragging = False
+        self._select(idx)
+
+    def _thumb_drag(self, event: tk.Event, idx: int) -> None:
+        """Handle drag motion over thumbnails for reordering."""
+        if not hasattr(self, "_drag_start_idx"):
+            return
+
+        self._dragging = True
+
+        # Figure out which thumbnail we're hovering over
+        # Convert event coords to canvas coords
+        canvas_y = self.thumb_canvas.canvasy(event.y_root - self.thumb_canvas.winfo_rooty())
+        target = self._thumb_index_at_y(canvas_y)
+        if target is None:
+            target = len(self.pages) - 1
+
+        # Draw insertion indicator
+        self._draw_drop_indicator(target)
+
+    def _thumb_drop(self, event: tk.Event) -> None:
+        """Handle drop to reorder pages."""
+        if not hasattr(self, "_drag_start_idx") or not self._dragging:
+            self._clear_drop_indicator()
+            return
+
+        canvas_y = self.thumb_canvas.canvasy(event.y_root - self.thumb_canvas.winfo_rooty())
+        target = self._thumb_index_at_y(canvas_y)
+        if target is None:
+            target = len(self.pages) - 1
+
+        src = self._drag_start_idx
+        self._clear_drop_indicator()
+        self._dragging = False
+
+        if src != target and 0 <= src < len(self.pages) and 0 <= target < len(self.pages):
+            page = self.pages.pop(src)
+            self.pages.insert(target, page)
+            self.selected = target
+            self._refresh_thumbs()
+            self._show_preview()
+
+    def _thumb_index_at_y(self, canvas_y: float) -> int | None:
+        """Return the page index closest to a canvas y-coordinate."""
+        children = self.thumb_inner.winfo_children()
+        for i, child in enumerate(children):
+            child_y = child.winfo_y()
+            child_h = child.winfo_height()
+            if canvas_y < child_y + child_h / 2:
+                return i
+        if children:
+            return len(children) - 1
+        return None
+
+    def _draw_drop_indicator(self, target_idx: int) -> None:
+        """Draw a horizontal line in the thumbnail panel showing where the page will land."""
+        self._clear_drop_indicator()
+        children = self.thumb_inner.winfo_children()
+        if not children:
+            return
+
+        if target_idx < len(children):
+            y = children[target_idx].winfo_y() - 2
+        else:
+            last = children[-1]
+            y = last.winfo_y() + last.winfo_height() + 2
+
+        self.thumb_canvas.create_line(
+            5, y, 155, y, fill="#4a90d9", width=3, tags="drop_indicator"
+        )
+
+    def _clear_drop_indicator(self) -> None:
+        self.thumb_canvas.delete("drop_indicator")
 
     def _select(self, idx: int) -> None:
         self.selected = idx
