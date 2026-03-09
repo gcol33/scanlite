@@ -110,14 +110,52 @@ def auto_perspective(img: NDArray) -> NDArray:
 # Scan enhancement (clean B&W / high-contrast document look)
 # ---------------------------------------------------------------------------
 
+def _scan_bw(gray: NDArray) -> NDArray:
+    """iPhone-style document scan: estimate local background, normalize, push to B&W.
+
+    Instead of a raw adaptive threshold, this:
+    1. Estimates the local background via a large morphological closing
+       (fills in text, leaving only the page surface)
+    2. Divides the original by the background to remove uneven lighting
+    3. Applies a sigmoid-like contrast stretch to push text toward black
+       and background toward white
+    4. Final light threshold cleans up any remaining noise
+    """
+    # Large kernel to estimate background (close = dilate then erode)
+    # This fills in dark text strokes, leaving only the background tone
+    ksize = max(gray.shape[0], gray.shape[1]) // 20
+    ksize = ksize if ksize % 2 == 1 else ksize + 1
+    ksize = max(ksize, 51)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (ksize, ksize))
+    background = cv2.morphologyEx(gray, cv2.MORPH_CLOSE, kernel)
+
+    # Normalize: divide original by background, rescale to 0-255
+    # Where background matches original (page surface), ratio ~1.0 -> white
+    # Where text is darker than background, ratio < 1.0 -> dark
+    norm = gray.astype(np.float32) / np.maximum(background.astype(np.float32), 1.0)
+    norm = np.clip(norm * 255, 0, 255).astype(np.uint8)
+
+    # Sigmoid-like contrast stretch: push midtones toward extremes
+    # This gives the crisp scanner look without the harsh adaptive threshold edges
+    norm_f = norm.astype(np.float32) / 255.0
+    midpoint = 0.75  # anything below this tends toward black
+    gain = 15.0  # steepness of the transition
+    sigmoid = 1.0 / (1.0 + np.exp(-gain * (norm_f - midpoint)))
+    result = np.clip(sigmoid * 255, 0, 255).astype(np.uint8)
+
+    return result
+
+
 def enhance_scan(img: NDArray, mode: str = "auto") -> NDArray:
     """Produce a clean, high-contrast scan look.
 
     Modes:
-        "bw"   - adaptive threshold to pure black & white
+        "bw"   - iPhone-style scan: estimates local background color,
+                 normalizes illumination, pushes text to black and
+                 background to white
         "gray" - CLAHE contrast enhancement on grayscale
         "auto" - detect whether the page is mostly white/light;
-                 if so, apply adaptive B&W, otherwise CLAHE gray
+                 if so, apply B&W scan, otherwise CLAHE gray
     """
     valid_modes = {"auto", "bw", "gray"}
     if mode not in valid_modes:
@@ -126,15 +164,10 @@ def enhance_scan(img: NDArray, mode: str = "auto") -> NDArray:
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img.ndim == 3 else img.copy()
 
     if mode == "auto":
-        # If median brightness > 170, page is mostly white -> B&W works well
-        mode = "bw" if np.median(gray) > 170 else "gray"
+        mode = "bw" if np.median(gray) > 140 else "gray"
 
     if mode == "bw":
-        # Adaptive threshold gives clean text on white background
-        result = cv2.adaptiveThreshold(
-            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 10
-        )
-        # Convert back to BGR for consistent pipeline
+        result = _scan_bw(gray)
         return cv2.cvtColor(result, cv2.COLOR_GRAY2BGR)
 
     # CLAHE for high-contrast grayscale

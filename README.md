@@ -43,7 +43,7 @@ Native installers bundle [Tesseract](https://github.com/tesseract-ocr/tesseract)
   | Mode | What it does |
   |------|-------------|
   | `auto` | Detects page brightness; picks B&W for white pages, CLAHE for darker ones |
-  | `bw` | Adaptive Gaussian threshold for pure black-on-white text |
+  | `bw` | iPhone-style scan: estimates local background, normalizes illumination, pushes text to black and page to white |
   | `gray` | CLAHE contrast enhancement for photos or diagrams |
 
 - Every operation works per-page or as a batch across all pages
@@ -77,7 +77,7 @@ Scanlite's processing pipeline runs perspective correction first (to avoid cropp
 
 The perspective detector looks for the largest 4-sided contour in the edge map and computes a homography to warp it into a rectangle. If no quadrilateral is found, the image passes through unchanged.
 
-The scan enhancer auto-detects whether a page is mostly white (median brightness > 170) and picks adaptive thresholding for text-heavy pages or CLAHE for photos and diagrams.
+The scan enhancer auto-detects whether a page is mostly white and picks the appropriate mode. In B&W mode, it estimates the local background color using morphological closing, divides by it to normalize uneven lighting, then applies a sigmoid contrast stretch to push text toward black and the page surface toward pure white. The result looks like a clean flatbed scan even from a phone photo taken under uneven light.
 
 ## System Requirements
 
