@@ -517,7 +517,7 @@ class App:
                 )
                 self.status_var.set("Opened Tesseract download page in browser.")
         elif system == "Darwin":
-            try:
+            if shutil.which("brew"):
                 subprocess.Popen(
                     ["brew", "install", "tesseract"],
                     stdout=subprocess.DEVNULL,
@@ -525,11 +525,10 @@ class App:
                 )
                 self.status_var.set("Installing Tesseract via Homebrew...")
                 return
-            except FileNotFoundError:
-                webbrowser.open(
-                    "https://github.com/tesseract-ocr/tesseract"
-                )
-                self.status_var.set("Opened Tesseract page in browser. Install Homebrew first.")
+            webbrowser.open(
+                "https://tesseract-ocr.github.io/tessdoc/Installation.html"
+            )
+            self.status_var.set("Opened Tesseract install guide in browser.")
         else:
             # Linux: try apt, then dnf, then browser
             for cmd in (["sudo", "apt", "install", "-y", "tesseract-ocr"],
