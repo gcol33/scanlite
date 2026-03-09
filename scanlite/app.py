@@ -517,14 +517,15 @@ class App:
                 )
                 self.status_var.set("Opened Tesseract download page in browser.")
         elif system == "Darwin":
-            if shutil.which("brew"):
-                subprocess.Popen(
-                    ["brew", "install", "tesseract"],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-                self.status_var.set("Installing Tesseract via Homebrew...")
-                return
+            for cmd, msg in [
+                (["brew", "install", "tesseract"], "Homebrew"),
+                (["port", "install", "tesseract"], "MacPorts"),
+                (["conda", "install", "-y", "-c", "conda-forge", "tesseract"], "conda"),
+            ]:
+                if shutil.which(cmd[0]):
+                    subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    self.status_var.set(f"Installing Tesseract via {msg}...")
+                    return
             webbrowser.open(
                 "https://tesseract-ocr.github.io/tessdoc/Installation.html"
             )
