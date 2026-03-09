@@ -15,6 +15,8 @@ pip install scanlite
 scanlite
 ```
 
+Native installers (.msi, .dmg, .deb, .rpm) are also available, see [Installation](#native-installers).
+
 ## Features
 
 ### Import
