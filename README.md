@@ -8,7 +8,7 @@
 
 Load scanned pages or photos from your phone, let Scanlite straighten, crop, and clean them automatically, reorder as needed, and export a single PDF with an optional OCR text layer.
 
-## Getting Started
+## Installation
 
 ```bash
 pip install scanlite
