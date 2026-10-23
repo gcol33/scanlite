@@ -1,6 +1,8 @@
 # Scanlite
 
 [![Release](https://github.com/gcol33/scanlite/actions/workflows/release.yml/badge.svg)](https://github.com/gcol33/scanlite/actions/workflows/release.yml)
+[![PyPI downloads](https://static.pepy.tech/badge/scanlite)](https://pepy.tech/projects/scanlite)
+[![Monthly downloads](https://static.pepy.tech/badge/scanlite/month)](https://pepy.tech/projects/scanlite)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
